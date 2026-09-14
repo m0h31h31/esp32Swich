@@ -1,0 +1,7 @@
+# 统一以 LF 存入仓库，检出时由各平台自行转换，避免跨平台协作产生整文件假 diff
+* text=auto eol=lf
+
+# 二进制文件不做任何换行转换
+*.png  binary
+*.bin  binary
+*.elf  binary

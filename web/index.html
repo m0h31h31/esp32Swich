@@ -1,0 +1,1291 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>智能开关 · 管理后台</title>
+<style>
+:root{
+  --bg:#f4f6fa; --card:#fff; --fg:#1b2330; --sub:#6b7688; --line:#e3e8f0;
+  --pri:#2f6fed; --pri-d:#2258c9; --ok:#12a150; --warn:#e8890c; --err:#e0393e;
+  --shadow:0 1px 2px rgba(16,24,40,.06),0 4px 16px rgba(16,24,40,.06);
+  --r:14px;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#0e131b; --card:#161d28; --fg:#e6ebf3; --sub:#8b97a9; --line:#263041;
+    --pri:#5b8cf7; --pri-d:#3f74e8; --ok:#28c76f; --warn:#f0a73a; --err:#f2585d;
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 6px 20px rgba(0,0,0,.3);
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);
+  font:14px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  -webkit-font-smoothing:antialiased}
+a{color:var(--pri);text-decoration:none}
+h1,h2,h3{margin:0}
+button,input,select,textarea{font:inherit;color:inherit}
+
+/* ---------- 布局 ---------- */
+.topbar{position:sticky;top:0;z-index:50;background:var(--card);border-bottom:1px solid var(--line);
+  padding:10px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:9px;font-weight:700;font-size:16px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--sub);flex:none}
+.dot.on{background:var(--ok);box-shadow:0 0 0 3px rgba(18,161,80,.18)}
+.dot.err{background:var(--err);box-shadow:0 0 0 3px rgba(224,57,62,.18)}
+.dot.warn{background:var(--warn)}
+.spacer{flex:1}
+.chip{font-size:12px;color:var(--sub);background:var(--bg);border:1px solid var(--line);
+  padding:3px 9px;border-radius:999px;white-space:nowrap}
+
+nav{display:flex;gap:4px;overflow-x:auto;padding:8px 12px;background:var(--card);
+  border-bottom:1px solid var(--line);position:sticky;top:53px;z-index:40;scrollbar-width:none}
+nav::-webkit-scrollbar{display:none}
+nav button{background:none;border:0;padding:8px 14px;border-radius:9px;color:var(--sub);
+  cursor:pointer;white-space:nowrap;font-weight:500}
+nav button.active{background:var(--pri);color:#fff}
+
+main{max-width:1080px;margin:0 auto;padding:16px 16px 60px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:16px;box-shadow:var(--shadow)}
+.card h3{font-size:15px;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.card h3 small{font-weight:400;color:var(--sub);font-size:12px}
+.page{display:none}
+.page.active{display:block}
+
+/* ---------- 表单 ---------- */
+.field{margin-bottom:12px}
+.field label{display:block;font-size:12.5px;color:var(--sub);margin-bottom:5px}
+.field .hint{font-size:11.5px;color:var(--sub);margin-top:4px;line-height:1.5}
+input[type=text],input[type=password],input[type=number],input[type=url],select,textarea{
+  width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:9px;
+  background:var(--bg);outline:none;transition:border-color .15s}
+input:focus,select:focus,textarea:focus{border-color:var(--pri)}
+textarea{min-height:90px;font-family:ui-monospace,Consolas,monospace;font-size:12px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>*{flex:1;min-width:130px}
+.inline{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.inline input[type=checkbox]{width:17px;height:17px;accent-color:var(--pri);flex:none}
+.inline label{margin:0;font-size:13.5px;color:var(--fg)}
+
+.btn{padding:9px 16px;border:1px solid var(--line);border-radius:9px;background:var(--card);
+  cursor:pointer;font-weight:500;transition:.15s;white-space:nowrap}
+.btn:hover{border-color:var(--pri);color:var(--pri)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.pri:hover{background:var(--pri-d)}
+.btn.danger{color:var(--err);border-color:var(--err)}
+.btn.danger:hover{background:var(--err);color:#fff}
+.btn.sm{padding:5px 11px;font-size:12.5px}
+.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:14px}
+
+/* ---------- 数据展示 ---------- */
+.kv{display:flex;justify-content:space-between;gap:12px;padding:7px 0;
+  border-bottom:1px dashed var(--line);font-size:13px}
+.kv:last-child{border:0}
+.kv span:first-child{color:var(--sub);flex:none}
+.kv span:last-child{text-align:right;word-break:break-all;font-variant-numeric:tabular-nums}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:10px}
+.metric{background:var(--bg);border-radius:11px;padding:11px;text-align:center}
+.metric b{display:block;font-size:19px;font-variant-numeric:tabular-nums;line-height:1.3}
+.metric span{font-size:11.5px;color:var(--sub)}
+.bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--pri);border-radius:99px;transition:width .4s}
+.bar i.ok{background:var(--ok)} .bar i.warn{background:var(--warn)} .bar i.err{background:var(--err)}
+
+/* ---------- 开关卡片 ---------- */
+.devcard{background:var(--card);border:1px solid var(--line);border-radius:var(--r);
+  padding:18px;text-align:center;box-shadow:var(--shadow)}
+.devcard .ico{font-size:34px;line-height:1}
+.devcard .nm{font-weight:600;margin:8px 0 2px}
+.devcard .tp{font-size:11.5px;color:var(--sub);margin-bottom:12px}
+.sw{width:66px;height:34px;border-radius:99px;background:var(--line);position:relative;
+  margin:0 auto;cursor:pointer;transition:background .25s;border:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:28px;height:28px;border-radius:50%;
+  background:#fff;transition:transform .25s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.sw.on{background:var(--ok)}
+.sw.on::after{transform:translateX(32px)}
+.sw:disabled{opacity:.5;cursor:wait}
+.st{margin-top:9px;font-size:12.5px;color:var(--sub)}
+
+/* ---------- 列表 ---------- */
+.list{border:1px solid var(--line);border-radius:11px;overflow:hidden}
+.list .it{display:flex;align-items:center;gap:10px;padding:10px 12px;
+  border-bottom:1px solid var(--line);cursor:pointer;transition:background .12s}
+.list .it:last-child{border:0}
+.list .it:hover{background:var(--bg)}
+.list .it b{font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.list .it small{color:var(--sub);font-size:11.5px;flex:none}
+
+/* ---------- 日志 ---------- */
+.logbox{background:#0c111a;color:#cfd8e6;border-radius:11px;padding:10px;height:440px;
+  overflow-y:auto;font:12px/1.65 ui-monospace,Consolas,"Courier New",monospace}
+.logbox div{white-space:pre-wrap;word-break:break-all;padding:1px 0}
+.lg0{color:#ff7a7f} .lg1{color:#ffc46b} .lg2{color:#9fd2ff} .lg3{color:#7f8ea3}
+.logbox time{color:#5b6a80;margin-right:6px}
+.logbox em{color:#68d391;font-style:normal;margin-right:6px}
+
+/* ---------- 提示 ---------- */
+#toast{position:fixed;left:50%;bottom:26px;transform:translate(-50%,120px);z-index:300;
+  background:#1f2937;color:#fff;padding:11px 20px;border-radius:11px;font-size:13.5px;
+  box-shadow:0 8px 28px rgba(0,0,0,.35);transition:transform .3s;max-width:88vw;text-align:center}
+#toast.show{transform:translate(-50%,0)}
+#toast.ok{background:var(--ok)} #toast.err{background:var(--err)} #toast.warn{background:var(--warn)}
+.alert{padding:10px 13px;border-radius:10px;font-size:12.5px;margin-bottom:13px;line-height:1.6}
+.alert.warn{background:rgba(232,137,12,.12);border:1px solid rgba(232,137,12,.35);color:var(--warn)}
+.alert.info{background:rgba(47,111,237,.1);border:1px solid rgba(47,111,237,.3)}
+.alert.err{background:rgba(224,57,62,.12);border:1px solid rgba(224,57,62,.35);color:var(--err)}
+
+/* ---------- 登录 ---------- */
+#login{position:fixed;inset:0;background:var(--bg);z-index:200;display:flex;
+  align-items:center;justify-content:center;padding:20px}
+#login .box{background:var(--card);border:1px solid var(--line);border-radius:18px;
+  padding:30px 26px;width:100%;max-width:350px;box-shadow:var(--shadow)}
+#login h2{text-align:center;font-size:19px;margin-bottom:4px}
+#login p{text-align:center;color:var(--sub);font-size:12.5px;margin:0 0 22px}
+
+/* ---------- 进度 ---------- */
+.prog{height:10px;background:var(--line);border-radius:99px;overflow:hidden;margin:10px 0}
+.prog i{display:block;height:100%;width:0;background:var(--pri);transition:width .3s}
+.sched{display:grid;grid-template-columns:auto 1fr auto;gap:9px;align-items:center;
+  padding:9px 0;border-bottom:1px dashed var(--line)}
+.days{display:flex;gap:3px;flex-wrap:wrap}
+.days button{width:27px;height:27px;border-radius:7px;border:1px solid var(--line);
+  background:var(--bg);font-size:11.5px;cursor:pointer;padding:0}
+.days button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+@media (max-width:560px){
+  main{padding:12px 12px 50px}
+  .topbar{padding:9px 12px}
+  .sched{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ 登录 ============ -->
+<div id="login">
+  <div class="box">
+    <h2>智能开关</h2>
+    <p id="loginSub">请登录以继续</p>
+    <div class="field"><label>用户名</label><input id="lu" type="text" autocomplete="username" value="admin"></div>
+    <div class="field"><label>密码</label><input id="lp" type="password" autocomplete="current-password"></div>
+    <button class="btn pri" style="width:100%" onclick="doLogin()">登 录</button>
+    <div id="loginMsg" class="alert err" style="display:none;margin:13px 0 0"></div>
+  </div>
+</div>
+
+<!-- ============ 顶栏 ============ -->
+<div class="topbar">
+  <div class="brand"><span id="dotNet" class="dot"></span><span id="devName">智能开关</span></div>
+  <span class="spacer"></span>
+  <span class="chip" id="chipIp">-</span>
+  <span class="chip" id="chipMqtt">巴法云 -</span>
+  <span class="chip" id="chipTime">-</span>
+  <button class="btn sm" onclick="logout()">退出</button>
+</div>
+
+<nav id="nav"></nav>
+
+<main>
+<div id="topAlert"></div>
+
+<!-- ---------- 总览 ---------- -->
+<section class="page active" data-p="home">
+  <div class="grid">
+    <div class="card">
+      <h3>继电器控制</h3>
+      <div class="devcard" style="border:0;box-shadow:none;padding:6px 0">
+        <div class="ico" id="relayIco">🔌</div>
+        <div class="nm" id="relayName">本机继电器</div>
+        <div class="tp" id="relayPin">IO- · -电平触发</div>
+        <button class="sw" id="relaySw" onclick="relay('toggle')"></button>
+        <div class="st" id="relaySt">读取中…</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>运行概况</h3>
+      <div class="metrics">
+        <div class="metric"><b id="mTemp">-</b><span>CPU温度 ℃</span></div>
+        <div class="metric"><b id="mRssi">-</b><span>信号 dBm</span></div>
+        <div class="metric"><b id="mHeap">-</b><span>可用内存 KB</span></div>
+        <div class="metric"><b id="mUp">-</b><span>运行时长</span></div>
+      </div>
+      <div style="margin-top:12px">
+        <div class="kv"><span>内存占用</span><span id="mHeapPct">-</span></div>
+        <div class="bar"><i id="barHeap" style="width:0"></i></div>
+        <div class="kv" style="margin-top:8px"><span>信号质量</span><span id="mQual">-</span></div>
+        <div class="bar"><i id="barRssi" style="width:0"></i></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>巴法云设备 <small id="bafaHint"></small></h3>
+      <div id="bafaCards" class="grid" style="grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:10px"></div>
+    </div>
+
+    <div class="card">
+      <h3>状态摘要</h3>
+      <div class="kv"><span>WiFi</span><span id="sWifi">-</span></div>
+      <div class="kv"><span>IP 地址</span><span id="sIp">-</span></div>
+      <div class="kv"><span>巴法云</span><span id="sMqtt">-</span></div>
+      <div class="kv"><span>系统时间</span><span id="sTime">-</span></div>
+      <div class="kv"><span>下次定时</span><span id="sSched">-</span></div>
+      <div class="kv"><span>切换次数</span><span id="sCnt">-</span></div>
+      <div class="kv"><span>累计导通</span><span id="sOn">-</span></div>
+      <div class="actions">
+        <button class="btn sm" onclick="act('/api/time/sync','校时')">立即校时</button>
+        <button class="btn sm" onclick="act('/api/mqtt/reconnect','重连')">重连巴法云</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ---------- 设备信息 ---------- -->
+<section class="page" data-p="info">
+  <div class="grid">
+    <div class="card"><h3>芯片与固件</h3><div id="infoChip"></div></div>
+    <div class="card"><h3>存储与分区</h3><div id="infoFlash"></div></div>
+    <div class="card"><h3>内存与任务</h3><div id="infoMem"></div></div>
+    <div class="card"><h3>网络详情</h3><div id="infoNet"></div></div>
+  </div>
+</section>
+
+<!-- ---------- 网络设置 ---------- -->
+<section class="page" data-p="net">
+  <div class="grid">
+    <div class="card">
+      <h3>工作模式</h3>
+      <div class="field">
+        <label>WiFi 模式</label>
+        <select id="wMode">
+          <option value="1">STA — 连接已有路由器（推荐）</option>
+          <option value="0">AP — 仅自己开热点</option>
+          <option value="2">AP+STA — 双模并存</option>
+        </select>
+        <div class="hint">AP 模式下连上热点会自动弹出本配置页（强制门户）。</div>
+      </div>
+      <div class="inline"><input type="checkbox" id="wApFb"><label>连不上路由器时自动开启应急热点</label></div>
+      <div class="field"><label>应急热点触发时间（秒）</label><input type="number" id="wApFbS" min="20" max="600"></div>
+      <div class="field"><label>发射功率（dBm，0=默认）</label><input type="number" id="wTx" min="0" max="20"></div>
+    </div>
+
+    <div class="card">
+      <h3>连接路由器（STA）</h3>
+      <div class="field">
+        <label>WiFi 名称（SSID）</label>
+        <input type="text" id="wSsid" placeholder="可点下方扫描，也可直接手动输入">
+        <div class="hint">扫描时设备要逐个信道搜索，热点连接可能出现 1~2 秒卡顿，属正常现象，页面会自动重试。</div>
+      </div>
+      <div class="field"><label>密码</label><input type="password" id="wPass" placeholder="留空表示不修改"></div>
+      <div class="actions" style="margin:0 0 12px">
+        <button class="btn sm" onclick="scanWifi()">扫描周边网络</button>
+        <button class="btn sm" onclick="testWifi()">测试连接</button>
+      </div>
+      <div id="scanList"></div>
+      <div class="inline" style="margin-top:12px"><input type="checkbox" id="wDhcp"><label>自动获取 IP（DHCP）</label></div>
+      <div id="staticBox" style="display:none">
+        <div class="row">
+          <div class="field"><label>IP 地址</label><input type="text" id="wIp" placeholder="192.168.1.50"></div>
+          <div class="field"><label>子网掩码</label><input type="text" id="wMask" placeholder="255.255.255.0"></div>
+        </div>
+        <div class="row">
+          <div class="field"><label>网关</label><input type="text" id="wGw" placeholder="192.168.1.1"></div>
+          <div class="field"><label>DNS</label><input type="text" id="wDns" placeholder="223.5.5.5"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>热点设置（AP）</h3>
+      <div class="field"><label>热点名称</label><input type="text" id="aSsid" placeholder="留空自动生成"></div>
+      <div class="field"><label>热点密码</label><input type="password" id="aPass" placeholder="至少 8 位，留空为开放热点"></div>
+      <div class="row">
+        <div class="field"><label>信道</label><input type="number" id="aCh" min="1" max="13"></div>
+        <div class="field"><label>最大连接数</label><input type="number" id="aMax" min="1" max="8"></div>
+      </div>
+      <div class="inline"><input type="checkbox" id="aHide"><label>隐藏热点名称</label></div>
+      <div class="field"><label>热点 IP</label><input type="text" id="aIp"></div>
+    </div>
+  </div>
+  <div class="actions"><button class="btn pri" onclick="saveNet()">保存网络设置</button></div>
+</section>
+
+<!-- ---------- 巴法云 ---------- -->
+<section class="page" data-p="mqtt">
+  <div class="grid">
+    <div class="card">
+      <h3>巴法云接入</h3>
+      <div class="inline"><input type="checkbox" id="mEn"><label>启用巴法云（bemfa）</label></div>
+      <div class="row">
+        <div class="field"><label>服务器地址</label><input type="text" id="mHost"></div>
+        <div class="field"><label>端口</label><input type="number" id="mPort"></div>
+      </div>
+      <div class="field">
+        <label>用户私钥（Key）</label>
+        <input type="password" id="mKey" placeholder="巴法云控制台的 32 位私钥">
+        <div class="hint">在 <b>bemfa.com</b> 登录后即可看到私钥；MQTT 端口固定 9501。</div>
+      </div>
+      <div class="field"><label>客户端后缀（多设备共用私钥时填写）</label><input type="text" id="mSuf" placeholder="留空即可"></div>
+      <div class="row">
+        <div class="field"><label>心跳间隔（秒）</label><input type="number" id="mKa" min="15" max="300"></div>
+        <div class="field"><label>周期上报（秒，0=关）</label><input type="number" id="mRep" min="0" max="3600"></div>
+      </div>
+      <div class="inline"><input type="checkbox" id="mChg"><label>状态变化时立即上报</label></div>
+      <div class="inline"><input type="checkbox" id="mSync"><label>连接成功后同步一次状态</label></div>
+      <div class="field">
+        <label>状态上报方式</label>
+        <select id="mSuf">
+          <option value="0">主题/up —— 只更新云端数据（官方推荐，默认）</option>
+          <option value="1">主题/set —— 同时推送给其他订阅者</option>
+          <option value="2">主题（无后缀）—— 兼容旧版接入</option>
+        </select>
+        <div class="hint">控制台和手机 App 显示的开关状态取自云端数据，所以默认用 <b>/up</b>。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>主题绑定 <small>最多 4 个</small></h3>
+      <div id="topicBox"></div>
+      <div class="actions">
+        <button class="btn sm" onclick="addTopic()">+ 添加主题</button>
+      </div>
+      <div class="alert warn" style="margin-top:13px">
+        ⚠ 主题必须<b>先在巴法云 MQTT 控制台「新建主题」</b>，设备才会出现在控制台里。<br>
+        设备订阅一个不存在的主题同样会返回成功，但控制台看不到它 —— 这是最常见的"连上了却没设备"的原因。
+      </div>
+      <div class="alert info">
+        主题名<b>后三位数字</b>决定设备类型：<br>
+        001 开关/插座 · 002 灯 · 003 窗帘 · 004 传感器 · 005 空调 · 006 风扇 · 007 电视。<br>
+        例：<b>switch001</b> 会被识别为开关并生成对应控制卡片。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>连接状态</h3>
+      <div id="mqttStat"></div>
+      <div class="actions">
+        <button class="btn sm" onclick="act('/api/mqtt/reconnect','重连')">立即重连</button>
+        <button class="btn sm" onclick="testPublish()">发送测试消息</button>
+      </div>
+    </div>
+  </div>
+  <div class="actions"><button class="btn pri" onclick="saveMqtt()">保存巴法云设置</button></div>
+</section>
+
+<!-- ---------- 硬件 ---------- -->
+<section class="page" data-p="hw">
+  <div class="grid">
+    <div class="card">
+      <h3>继电器</h3>
+      <div class="field">
+        <label>驱动引脚</label>
+        <select id="rPin"></select>
+        <div class="hint">本板出厂接线为 <b>IO16</b>。不确定时用下方"引脚探测"逐个试听。</div>
+      </div>
+      <div class="field">
+        <label>触发电平</label>
+        <select id="rLvl"><option value="1">高电平吸合</option><option value="0">低电平吸合</option></select>
+        <div class="hint">改动后逻辑状态保持不变，仅重新按新极性输出。</div>
+      </div>
+      <div class="field">
+        <label>上电默认状态</label>
+        <select id="rPwr">
+          <option value="0">断开</option><option value="1">闭合</option><option value="2">恢复断电前状态</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="field"><label>最小动作间隔（ms）</label><input type="number" id="rMin" min="0" max="5000"></div>
+        <div class="field"><label>自动关闭（秒，0=关）</label><input type="number" id="rAuto" min="0" max="86400"></div>
+      </div>
+      <div class="field">
+        <label>引脚探测</label>
+        <div class="row">
+          <select id="probePin"></select>
+          <button class="btn" onclick="probe()">输出测试脉冲</button>
+        </div>
+        <div class="hint">点击后该引脚会输出约 0.8 秒脉冲，听到"咔哒"即为正确引脚。</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>IO0 按键</h3>
+      <div class="inline"><input type="checkbox" id="bEn"><label>启用板载按键</label></div>
+      <div class="row">
+        <div class="field"><label>引脚</label><input type="number" id="bPin" min="0" max="39"></div>
+        <div class="field"><label>消抖（ms）</label><input type="number" id="bDeb" min="5" max="500"></div>
+      </div>
+      <div class="field"><label>长按恢复出厂时长（ms）</label><input type="number" id="bLong" min="1000" max="30000"></div>
+      <div class="inline"><input type="checkbox" id="bMulti"><label>启用双击 / 三击功能</label></div>
+      <div class="alert info">
+        单击 → 切换继电器<br>双击 → 开启应急热点<br>三击 → 重启设备<br>长按 10 秒 → 恢复出厂设置
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>状态指示灯（可选）</h3>
+      <div class="inline"><input type="checkbox" id="lEn"><label>启用指示灯</label></div>
+      <div class="row">
+        <div class="field"><label>引脚</label><input type="number" id="lPin" min="-1" max="39"></div>
+        <div class="field"><label>有效电平</label>
+          <select id="lLvl"><option value="1">高电平点亮</option><option value="0">低电平点亮</option></select></div>
+      </div>
+      <div class="inline"><input type="checkbox" id="lFollow"><label>跟随继电器状态（否则指示网络状态）</label></div>
+      <div class="hint">网络指示：慢闪=连接中，快闪=配网模式，双闪=已联网但巴法云断开，心跳=一切正常。</div>
+    </div>
+  </div>
+  <div class="actions"><button class="btn pri" onclick="saveHw()">保存硬件设置</button></div>
+</section>
+
+<!-- ---------- 定时 ---------- -->
+<section class="page" data-p="sched">
+  <div class="card">
+    <h3>定时任务 <small>最多 8 条，需校时成功后生效</small></h3>
+    <div id="schedBox"></div>
+    <div class="actions"><button class="btn pri" onclick="saveSched()">保存定时任务</button></div>
+  </div>
+</section>
+
+<!-- ---------- 时间 ---------- -->
+<section class="page" data-p="time">
+  <div class="grid">
+    <div class="card">
+      <h3>时间同步</h3>
+      <div class="inline"><input type="checkbox" id="tEn"><label>启用 NTP 联网校时</label></div>
+      <div class="field"><label>NTP 服务器 1</label><input type="text" id="tN1"></div>
+      <div class="field"><label>NTP 服务器 2</label><input type="text" id="tN2"></div>
+      <div class="field"><label>NTP 服务器 3</label><input type="text" id="tN3"></div>
+      <div class="row">
+        <div class="field"><label>时区</label><input type="text" id="tTz" placeholder="CST-8"></div>
+        <div class="field"><label>同步间隔（秒）</label><input type="number" id="tInt" min="600" max="86400"></div>
+      </div>
+      <div class="hint">中国大陆填 <b>CST-8</b>。格式为 POSIX TZ，注意符号与直觉相反。</div>
+      <div id="timeStat" style="margin-top:10px"></div>
+    </div>
+  </div>
+  <div class="actions"><button class="btn pri" onclick="saveTime()">保存时间设置</button></div>
+</section>
+
+<!-- ---------- 系统 ---------- -->
+<section class="page" data-p="sys">
+  <div class="grid">
+    <div class="card">
+      <h3>基本设置</h3>
+      <div class="field"><label>设备名称</label><input type="text" id="yName"></div>
+      <div class="field"><label>主机名（mDNS）</label><input type="text" id="yHost" placeholder="留空自动生成">
+        <div class="hint">启用 mDNS 后可用 <b>http://主机名.local</b> 直接访问。</div></div>
+      <div class="inline"><input type="checkbox" id="yMdns"><label>启用 mDNS 发现</label></div>
+      <div class="field"><label>日志级别</label>
+        <select id="yLog"><option value="0">仅错误</option><option value="1">警告</option>
+          <option value="2">信息（推荐）</option><option value="3">调试</option></select></div>
+      <div class="row">
+        <div class="field"><label>定期自动重启（小时，0=关）</label><input type="number" id="yReb" min="0" max="720"></div>
+        <div class="field"><label>看门狗超时（秒，0=关）</label><input type="number" id="yWdt" min="0" max="300"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>登录账号</h3>
+      <div class="field"><label>用户名</label><input type="text" id="yUser"></div>
+      <div class="field"><label>新密码</label><input type="password" id="yPass" placeholder="留空表示不修改，至少 6 位"></div>
+      <div class="row">
+        <div class="field"><label>网页端口</label><input type="number" id="yPort" min="1" max="65535"></div>
+        <div class="field"><label>会话有效期（分钟）</label><input type="number" id="ySess" min="5" max="10080"></div>
+      </div>
+      <div id="webStat" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h3>配置备份</h3>
+      <div class="hint" style="margin-bottom:12px">
+        导出的 JSON 含全部参数（包括密码明文），请妥善保管。<br>
+        导入后设备会重启。固件升级不会丢失配置，新增参数自动取默认值。
+      </div>
+      <div class="actions" style="margin:0">
+        <button class="btn" onclick="exportCfg()">导出配置</button>
+        <button class="btn" onclick="document.getElementById('impFile').click()">导入配置</button>
+        <input type="file" id="impFile" accept=".json" style="display:none" onchange="importCfg(this)">
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>危险操作</h3>
+      <div class="alert warn">恢复出厂设置会清空全部配置（WiFi、巴法云、账号密码），设备将重新进入配网模式。</div>
+      <div class="actions" style="margin:0">
+        <button class="btn danger" onclick="reboot()">重启设备</button>
+        <button class="btn danger" onclick="factory()">恢复出厂设置</button>
+      </div>
+    </div>
+  </div>
+  <div class="actions"><button class="btn pri" onclick="saveSys()">保存系统设置</button></div>
+</section>
+
+<!-- ---------- OTA ---------- -->
+<section class="page" data-p="ota">
+  <div class="grid">
+    <div class="card">
+      <h3>本地上传升级</h3>
+      <div class="field">
+        <label>选择固件文件（firmware.bin）</label>
+        <input type="file" id="fwFile" accept=".bin">
+      </div>
+      <div class="prog"><i id="otaBar"></i></div>
+      <div id="otaMsg" class="hint">未开始</div>
+      <div class="actions"><button class="btn pri" id="otaBtn" onclick="uploadFw()">开始升级</button></div>
+      <div class="alert warn" style="margin-top:13px">
+        升级过程约 20-40 秒，<b>期间请勿断电</b>。升级失败不影响现有固件（双分区保护），设备会从原分区启动。
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>远程 URL 升级</h3>
+      <div class="field"><label>固件直链地址</label>
+        <input type="url" id="otaUrl" placeholder="http://192.168.1.10/firmware.bin"></div>
+      <div class="actions" style="margin:0 0 14px"><button class="btn" onclick="otaByUrl()">从此地址升级</button></div>
+      <div class="field"><label>升级清单地址（可选，用于检查更新）</label>
+        <input type="url" id="otaChkUrl" placeholder="http://你的服务器/version.json"></div>
+      <div class="actions" style="margin:0">
+        <button class="btn sm" onclick="otaCheck()">检查更新</button>
+        <button class="btn sm" onclick="saveOtaUrl()">保存清单地址</button>
+      </div>
+      <div id="otaChkRes" class="hint" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card"><h3>当前固件</h3><div id="otaInfo"></div></div>
+  </div>
+</section>
+
+<!-- ---------- 日志 ---------- -->
+<section class="page" data-p="log">
+  <div class="card">
+    <h3>运行日志
+      <small>实时增量刷新</small>
+      <span class="spacer" style="flex:1"></span>
+      <select id="logLv" style="width:auto;padding:4px 8px" onchange="renderLogs()">
+        <option value="3">全部</option><option value="2">信息以上</option>
+        <option value="1">警告以上</option><option value="0">仅错误</option>
+      </select>
+    </h3>
+    <div class="logbox" id="logBox"></div>
+    <div class="actions">
+      <button class="btn sm" onclick="clearLogs()">清空日志</button>
+      <button class="btn sm" onclick="downloadLogs()">下载日志</button>
+      <label class="inline" style="margin:0 0 0 6px"><input type="checkbox" id="logAuto" checked><label>自动滚动</label></label>
+    </div>
+  </div>
+</section>
+</main>
+
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ======================= 基础工具 ======================= */
+const $ = id => document.getElementById(id);
+const TABS = [["home","总览"],["info","设备信息"],["net","网络"],["mqtt","巴法云"],
+              ["hw","硬件"],["sched","定时"],["time","时间"],["sys","系统"],
+              ["ota","升级"],["log","日志"]];
+
+let TOKEN = localStorage.getItem("esptoken") || "";
+let CFG = null, PAGE = "home", TIMER = null, LOGS = [], LOGLAST = 0, BUSY = false;
+
+function toast(msg, type){
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = "show " + (type || "");
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.className = "", 2800);
+}
+
+async function api(path, opt){
+  opt = opt || {};
+  opt.headers = Object.assign({"X-Auth-Token": TOKEN}, opt.headers || {});
+  if (opt.body && typeof opt.body !== "string" && !(opt.body instanceof FormData)){
+    opt.headers["Content-Type"] = "application/json";
+    opt.body = JSON.stringify(opt.body);
+  }
+  const r = await fetch(path, opt);
+  if (r.status === 401){ showLogin("会话已过期，请重新登录"); throw new Error("unauth"); }
+  const ct = r.headers.get("content-type") || "";
+  const d = ct.includes("json") ? await r.json() : {ok:r.ok, msg:await r.text()};
+  if (!r.ok && d && d.msg) d._httpErr = true;
+  return d;
+}
+
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c =>
+  ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const kv = (k, v) => `<div class="kv"><span>${esc(k)}</span><span>${esc(v)}</span></div>`;
+const fmtKB = b => (b/1024).toFixed(1);
+
+/* ======================= 登录 ======================= */
+function showLogin(msg){
+  $("login").style.display = "flex";
+  if (msg){ $("loginMsg").style.display = "block"; $("loginMsg").textContent = msg; }
+  if (TIMER){ clearInterval(TIMER); TIMER = null; }
+}
+async function doLogin(){
+  const u = $("lu").value.trim(), p = $("lp").value;
+  if (!u || !p){ return toast("请填写用户名和密码", "warn"); }
+  try{
+    const r = await fetch("/api/login", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({username:u, password:p})
+    });
+    const d = await r.json();
+    if (!d.ok){ $("loginMsg").style.display="block"; $("loginMsg").textContent = d.msg; return; }
+    TOKEN = d.token;
+    localStorage.setItem("esptoken", TOKEN);
+    $("login").style.display = "none";
+    $("loginMsg").style.display = "none";
+    $("lp").value = "";
+    boot();
+  }catch(e){ $("loginMsg").style.display="block"; $("loginMsg").textContent = "网络错误，请重试"; }
+}
+async function logout(){
+  try{ await api("/api/logout", {method:"POST"}); }catch(e){}
+  TOKEN = ""; localStorage.removeItem("esptoken");
+  showLogin("已退出登录");
+}
+$("lp").addEventListener("keydown", e => { if (e.key === "Enter") doLogin(); });
+
+/* ======================= 导航 ======================= */
+function buildNav(){
+  $("nav").innerHTML = TABS.map(([k,n]) =>
+    `<button data-k="${k}" onclick="go('${k}')">${n}</button>`).join("");
+}
+function go(k){
+  PAGE = k;
+  document.querySelectorAll(".page").forEach(e => e.classList.toggle("active", e.dataset.p === k));
+  document.querySelectorAll("#nav button").forEach(e => e.classList.toggle("active", e.dataset.k === k));
+  window.scrollTo(0,0);
+  if (k === "info") loadSysInfo();
+  if (k === "ota")  loadOta();
+  if (k === "log")  pollLogs();
+}
+
+/* ======================= 启动 ======================= */
+async function boot(){
+  buildNav(); go("home");
+  buildPinSelects(); buildSchedRows();
+  await loadConfig();
+  await refresh();
+  if (TIMER) clearInterval(TIMER);
+  TIMER = setInterval(() => { refresh(); if (PAGE === "log") pollLogs(); }, 3000);
+}
+
+/* ======================= 状态刷新 ======================= */
+async function refresh(){
+  let d;
+  try{ d = await api("/api/status"); }catch(e){ return; }
+  if (!d || !d.ok) return;
+
+  const w = d.wifi, m = d.mqtt, r = d.relay, rt = d.runtime;
+
+  // 顶栏
+  $("devName").textContent = d.device.name;
+  document.title = d.device.name + " · 管理后台";
+  $("dotNet").className = "dot " + (w.sta.online ? "on" : (w.ap.active ? "warn" : "err"));
+  $("chipIp").textContent = w.sta.online ? w.sta.ip : (w.ap.active ? w.ap.ip + " (热点)" : "未联网");
+  $("chipMqtt").textContent = "巴法云 " + m.phaseText;
+  $("chipTime").textContent = d.time.synced ? d.time.clock : "未校时";
+
+  // 顶部提醒
+  let al = "";
+  if (d.device.defaultPwd)
+    al += `<div class="alert warn">⚠ 当前仍在使用默认登录密码，请前往【系统】页面修改。</div>`;
+  if (!w.sta.online && w.ap.active)
+    al += `<div class="alert info">设备处于热点模式，请在【网络】页面配置要连接的 WiFi。</div>`;
+  if (m.enable && !m.connected && m.lastError)
+    al += `<div class="alert err">巴法云未连接：${esc(m.lastError)}</div>`;
+  $("topAlert").innerHTML = al;
+
+  // 继电器
+  $("relaySw").className = "sw" + (r.state ? " on" : "");
+  $("relayIco").textContent = r.state ? "💡" : "🔌";
+  $("relayPin").textContent = `IO${r.pin} · ${r.activeHigh ? "高" : "低"}电平触发`;
+  $("relaySt").textContent = (r.state ? "已开启" : "已关闭") +
+    (r.autoOffIn ? ` · ${r.autoOffIn}s 后自动关闭` : "") + ` · ${r.sinceChange}s 前变化`;
+
+  // 指标
+  $("mTemp").textContent = rt.tempValid ? rt.tempC.toFixed(1) : "--";
+  $("mRssi").textContent = w.sta.online ? w.sta.rssi : "--";
+  $("mHeap").textContent = fmtKB(rt.heap.free);
+  $("mUp").textContent   = rt.uptimeText;
+  $("mHeapPct").textContent = rt.heap.usedPct + "% （健康度 " + rt.heap.health + "）";
+  setBar("barHeap", rt.heap.usedPct, true);
+  $("mQual").textContent = w.sta.online ? w.sta.quality + "%" : "无连接";
+  setBar("barRssi", w.sta.quality, false);
+
+  // 摘要
+  $("sWifi").textContent = w.sta.online ? `${w.sta.ssid} (${w.phaseText})` : w.phaseText;
+  $("sIp").textContent   = w.sta.online ? w.sta.ip : (w.ap.active ? w.ap.ip : "-");
+  $("sMqtt").textContent = m.enable ? `${m.phaseText} · 收${m.rx}/发${m.tx}` : "未启用";
+  $("sTime").textContent = d.time.synced ? d.time.now : "未同步";
+  $("sSched").textContent= d.schedule.nextDesc || "无";
+  $("sCnt").textContent  = r.switchCount + " 次";
+  $("sOn").textContent   = fmtDur(r.onSeconds);
+
+  // 巴法云卡片
+  renderBafa(d.topics, m);
+  if (PAGE === "mqtt")  $("mqttStat").innerHTML = mqttStatHtml(m);
+  if (PAGE === "time")  $("timeStat").innerHTML = timeStatHtml(d.time);
+  if (PAGE === "sys")   $("webStat").innerHTML = kv("在线会话", d.web.sessions) +
+                          kv("累计请求", d.web.requests) + kv("累计登录", d.web.logins);
+  if (PAGE === "info")  renderNetInfo(w, rt);
+}
+
+function setBar(id, pct, inverse){
+  const e = $(id);
+  e.style.width = Math.max(0, Math.min(100, pct)) + "%";
+  const bad = inverse ? pct > 80 : pct < 30;
+  const mid = inverse ? pct > 60 : pct < 55;
+  e.className = bad ? "err" : (mid ? "warn" : "ok");
+}
+function fmtDur(s){
+  if (s < 60) return s + " 秒";
+  if (s < 3600) return Math.floor(s/60) + " 分 " + (s%60) + " 秒";
+  return Math.floor(s/3600) + " 小时 " + Math.floor(s%3600/60) + " 分";
+}
+
+/* ======================= 巴法云卡片 ======================= */
+const TYPE_ICON = {1:"🔌",2:"🔌",3:"💡",4:"📡",5:"🪟",6:"❄️",7:"🌀",8:"📺",0:"❓"};
+function renderBafa(topics, m){
+  const box = $("bafaCards");
+  if (!topics || !topics.length){
+    box.innerHTML = `<div class="hint">尚未配置主题，请前往【巴法云】页面添加。</div>`;
+    $("bafaHint").textContent = "";
+    return;
+  }
+  $("bafaHint").textContent = m.connected ? "已连接" : "离线（显示为本地状态）";
+  box.innerHTML = topics.map(t => `
+    <div class="devcard">
+      <div class="ico">${TYPE_ICON[t.type] || "❓"}</div>
+      <div class="nm">${esc(t.name)}</div>
+      <div class="tp">${esc(t.topic)} · ${esc(t.typeName)}${t.bind ? " · 已绑定" : ""}</div>
+      <button class="sw ${t.state ? "on" : ""}" ${t.bind ? "" : "disabled"}
+        onclick="relay('${t.state ? "off" : "on"}')"></button>
+      <div class="st">${t.state ? "开" : "关"}${t.bind ? "" : " · 仅展示"}</div>
+    </div>`).join("");
+}
+function mqttStatHtml(m){
+  return kv("状态", m.phaseText) + kv("服务器", m.host + ":" + m.port) +
+    kv("客户端ID", m.clientId) + kv("连接次数", m.connectCount) +
+    kv("在线时长", fmtDur(m.onlineSec)) + kv("收 / 发", m.rx + " / " + m.tx) +
+    kv("最近消息", m.lastMessage || "-") + (m.lastError ? kv("最近错误", m.lastError) : "");
+}
+function timeStatHtml(t){
+  return kv("当前时间", t.now) + kv("同步状态", t.synced ? "已同步" : "未同步") +
+    kv("同步次数", t.syncCount) + kv("距上次同步", fmtDur(t.sinceSync)) + kv("时区", t.tz);
+}
+
+/* ======================= 继电器 ======================= */
+async function relay(action){
+  if (BUSY) return;
+  BUSY = true; $("relaySw").disabled = true;
+  try{
+    const d = await api("/api/relay", {method:"POST", body:{action}});
+    toast(d.msg, d.ok ? "ok" : "warn");
+    await refresh();
+  }catch(e){}
+  BUSY = false; $("relaySw").disabled = false;
+}
+async function act(url, name){
+  try{ const d = await api(url, {method:"POST", body:{}}); toast(d.msg, d.ok ? "ok" : "err"); }
+  catch(e){ toast(name + "失败", "err"); }
+}
+
+/* ======================= 设备信息 ======================= */
+async function loadSysInfo(){
+  let d; try{ d = await api("/api/sysinfo"); }catch(e){ return; }
+  if (!d.ok) return;
+  const i = d.info;
+  $("infoChip").innerHTML =
+    kv("硬件型号", i.chip.hardware) + kv("芯片型号", i.chip.model) +
+    kv("芯片版本", "Rev." + i.chip.revision) + kv("核心数", i.chip.cores) +
+    kv("主频", i.chip.freqMHz + " MHz") + kv("功能", i.chip.features) +
+    kv("MAC 地址", i.chip.mac) + kv("固件版本", i.fw.version) +
+    kv("编译时间", fmtBuild(i.fw.buildTime)) + kv("Arduino 内核", i.fw.arduino) +
+    kv("ESP-IDF", i.fw.sdk) + kv("配置结构版本", i.fw.configVer) +
+    kv("上次复位原因", i.resetReason);
+  $("infoFlash").innerHTML =
+    kv("Flash 容量", i.flash.sizeText) + kv("Flash 速度", i.flash.speedMHz + " MHz") +
+    kv("固件占用", fmtKB(i.flash.sketchSize) + " KB") +
+    kv("OTA 可用空间", fmtKB(i.flash.sketchFree) + " KB") +
+    kv("固件 MD5", i.flash.sketchMD5) +
+    kv("运行分区", i.partition.running) +
+    kv("分区大小", fmtKB(i.partition.runningSize) + " KB") +
+    kv("启动分区", i.partition.boot) +
+    kv("待切换", i.partition.pending ? "是（重启后生效）" : "否");
+  loadMemInfo();
+}
+function fmtBuild(t){
+  const n = parseInt(t, 10);
+  if (!n || isNaN(n)) return t;
+  return new Date(n * 1000).toLocaleString("zh-CN");
+}
+async function loadMemInfo(){
+  let d; try{ d = await api("/api/status"); }catch(e){ return; }
+  const rt = d.runtime;
+  $("infoMem").innerHTML =
+    kv("堆总量", fmtKB(rt.heap.total) + " KB") +
+    kv("当前可用", fmtKB(rt.heap.free) + " KB") +
+    kv("历史最低", fmtKB(rt.heap.minFree) + " KB") +
+    kv("最大连续块", fmtKB(rt.heap.maxAlloc) + " KB") +
+    kv("内存占用", rt.heap.usedPct + "%") +
+    kv("健康度", rt.heap.health + " / 100") +
+    kv("任务数", rt.taskCount) +
+    kv("当前主频", rt.freqMHz + " MHz") +
+    kv("CPU 温度", rt.tempValid ? rt.tempC.toFixed(1) + " ℃（未校准，仅供参考）" : "不可用") +
+    kv("运行时长", rt.uptimeText);
+  renderNetInfo(d.wifi, rt);
+}
+function renderNetInfo(w, rt){
+  if (!$("infoNet")) return;
+  $("infoNet").innerHTML =
+    kv("主机名", w.hostname) + kv("连接状态", w.phaseText) +
+    kv("SSID", w.sta.ssid || "-") + kv("IP 地址", w.sta.ip) +
+    kv("子网掩码", w.sta.netmask) + kv("网关", w.sta.gateway) + kv("DNS", w.sta.dns) +
+    kv("获取方式", w.sta.dhcp ? "DHCP 自动" : "静态地址") +
+    kv("信号强度", w.sta.online ? w.sta.rssi + " dBm (" + w.sta.quality + "%)" : "-") +
+    kv("信道 / BSSID", w.sta.channel + " / " + w.sta.bssid) +
+    kv("STA MAC", w.sta.mac) + kv("累计断线", w.sta.disconnects + " 次") +
+    kv("热点状态", w.ap.active ? "已开启 " + w.ap.ssid : "未开启") +
+    kv("热点 IP", w.ap.ip) + kv("热点连接数", w.ap.clients) + kv("AP MAC", w.ap.mac);
+}
+
+/* ======================= 配置加载与填充 ======================= */
+async function loadConfig(){
+  let d; try{ d = await api("/api/config"); }catch(e){ return; }
+  if (!d.ok) return;
+  CFG = d.config;
+  fillForm();
+}
+const setV = (id, v) => { const e = $(id); if (e) e.value = (v == null ? "" : v); };
+const setC = (id, v) => { const e = $(id); if (e) e.checked = !!v; };
+const getV = id => { const e = $(id); return e ? e.value.trim() : ""; };
+const getN = id => { const e = $(id); return e ? parseInt(e.value, 10) || 0 : 0; };
+const getC = id => { const e = $(id); return e ? e.checked : false; };
+
+function fillForm(){
+  const c = CFG;
+  // 网络
+  setV("wMode", c.wifi.mode); setC("wApFb", c.wifi.apFallback);
+  setV("wApFbS", c.wifi.apFallbackS); setV("wTx", c.wifi.txPower);
+  setV("wSsid", c.wifi.sta.ssid); setV("wPass", "");
+  setC("wDhcp", c.wifi.sta.dhcp);
+  setV("wIp", c.wifi.sta.ip); setV("wMask", c.wifi.sta.netmask);
+  setV("wGw", c.wifi.sta.gateway); setV("wDns", c.wifi.sta.dns1);
+  setV("aSsid", c.wifi.ap.ssid); setV("aPass", "");
+  setV("aCh", c.wifi.ap.channel); setV("aMax", c.wifi.ap.maxConn);
+  setC("aHide", c.wifi.ap.hidden); setV("aIp", c.wifi.ap.ip);
+  toggleStatic();
+  // 巴法云
+  setC("mEn", c.mqtt.enable); setV("mHost", c.mqtt.host); setV("mPort", c.mqtt.port);
+  setV("mKey", ""); setV("mSuf", c.mqtt.clientSuffix);
+  setV("mKa", c.mqtt.keepalive); setV("mRep", c.mqtt.reportIntervalS);
+  setC("mChg", c.mqtt.reportOnChange); setC("mSync", c.mqtt.syncOnConnect);
+  setV("mSuf", c.mqtt.reportSuffix);
+  renderTopics(c.mqtt.topics);
+  // 硬件
+  setV("rPin", c.relay.pin); setV("rLvl", c.relay.activeHigh ? 1 : 0);
+  setV("rPwr", c.relay.powerOn); setV("rMin", c.relay.minIntervalMs);
+  setV("rAuto", c.relay.autoOffS); setV("probePin", c.relay.pin);
+  setC("bEn", c.button.enable); setV("bPin", c.button.pin);
+  setV("bDeb", c.button.debounceMs); setV("bLong", c.button.longPressMs);
+  setC("bMulti", c.button.multiClick);
+  setC("lEn", c.led.enable); setV("lPin", c.led.pin);
+  setV("lLvl", c.led.activeHigh ? 1 : 0); setC("lFollow", c.led.followRelay);
+  // 时间
+  setC("tEn", c.time.enable); setV("tN1", c.time.ntp1); setV("tN2", c.time.ntp2);
+  setV("tN3", c.time.ntp3); setV("tTz", c.time.tz); setV("tInt", c.time.intervalS);
+  // 系统
+  setV("yName", c.sys.deviceName); setV("yHost", c.sys.hostname);
+  setC("yMdns", c.sys.mdns); setV("yLog", c.sys.logLevel);
+  setV("yReb", c.sys.autoRebootH); setV("yWdt", c.sys.wdtS);
+  setV("yUser", c.web.username); setV("yPass", "");
+  setV("yPort", c.web.port); setV("ySess", c.web.sessionMin);
+  setV("otaChkUrl", c.sys.otaUrl);
+  // 定时
+  fillSched(c.schedules);
+}
+$("wDhcp").addEventListener("change", toggleStatic);
+function toggleStatic(){ $("staticBox").style.display = getC("wDhcp") ? "none" : "block"; }
+
+async function saveCfg(patch, name){
+  try{
+    const d = await api("/api/config", {method:"POST", body:patch});
+    toast(d.msg || (d.ok ? "已保存" : "保存失败"), d.ok ? "ok" : "err");
+    if (d.ok){
+      await loadConfig();
+      if (d.wifiRestart) toast("网络参数已变更，设备正在重连…", "warn");
+      if (d.portChanged) setTimeout(() => location.href = location.protocol + "//" +
+        location.hostname + ":" + d.newPort + "/", 2500);
+    }
+    return d.ok;
+  }catch(e){ toast(name + "保存失败", "err"); return false; }
+}
+
+/* ---- 各页保存 ---- */
+function saveNet(){
+  const p = {wifi:{mode:getN("wMode"), apFallback:getC("wApFb"), apFallbackS:getN("wApFbS"),
+    txPower:getN("wTx"),
+    sta:{ssid:getV("wSsid"), dhcp:getC("wDhcp"), ip:getV("wIp"), netmask:getV("wMask"),
+         gateway:getV("wGw"), dns1:getV("wDns")},
+    ap:{ssid:getV("aSsid"), channel:getN("aCh"), maxConn:getN("aMax"),
+        hidden:getC("aHide"), ip:getV("aIp")}}};
+  if (getV("wPass")) p.wifi.sta.password = getV("wPass");
+  if (getV("aPass")) p.wifi.ap.password  = getV("aPass");
+  saveCfg(p, "网络");
+}
+function saveMqtt(){
+  const topics = [];
+  document.querySelectorAll("#topicBox .trow").forEach(row => {
+    const t = row.querySelector(".tTopic").value.trim();
+    if (!t) return;
+    topics.push({enable: row.querySelector(".tEn").checked, topic: t,
+      name: row.querySelector(".tName").value.trim(),
+      bind: row.querySelector(".tBind").checked ? 1 : 0});
+  });
+  const p = {mqtt:{enable:getC("mEn"), host:getV("mHost"), port:getN("mPort"),
+    clientSuffix:getV("mSuf"), keepalive:getN("mKa"), reportIntervalS:getN("mRep"),
+    reportOnChange:getC("mChg"), syncOnConnect:getC("mSync"),
+    reportSuffix:getN("mSuf"), topics}};
+  if (getV("mKey")) p.mqtt.key = getV("mKey");
+  saveCfg(p, "巴法云");
+}
+function saveHw(){
+  saveCfg({relay:{pin:getN("rPin"), activeHigh:getV("rLvl")==="1", powerOn:getN("rPwr"),
+      minIntervalMs:getN("rMin"), autoOffS:getN("rAuto")},
+    button:{enable:getC("bEn"), pin:getN("bPin"), debounceMs:getN("bDeb"),
+      longPressMs:getN("bLong"), multiClick:getC("bMulti")},
+    led:{enable:getC("lEn"), pin:getN("lPin"), activeHigh:getV("lLvl")==="1",
+      followRelay:getC("lFollow")}}, "硬件");
+}
+function saveTime(){
+  saveCfg({time:{enable:getC("tEn"), ntp1:getV("tN1"), ntp2:getV("tN2"), ntp3:getV("tN3"),
+      tz:getV("tTz"), intervalS:getN("tInt")}}, "时间");
+}
+function saveSys(){
+  const p = {sys:{deviceName:getV("yName"), hostname:getV("yHost"), mdns:getC("yMdns"),
+      logLevel:getN("yLog"), autoRebootH:getN("yReb"), wdtS:getN("yWdt")},
+    web:{username:getV("yUser"), port:getN("yPort"), sessionMin:getN("ySess")}};
+  if (getV("yPass")) p.web.password = getV("yPass");
+  saveCfg(p, "系统");
+}
+function saveOtaUrl(){ saveCfg({sys:{otaUrl:getV("otaChkUrl")}}, "升级地址"); }
+
+/* ======================= WiFi 扫描 ======================= */
+let scanTimer = null;
+async function scanWifi(){
+  const box = $("scanList");
+  box.innerHTML = `<div class="hint">正在启动扫描…</div>`;
+  try{ await api("/api/wifi/scan?start=1"); }
+  catch(e){ box.innerHTML = `<div class="hint">启动扫描失败，请重试</div>`; return; }
+
+  clearInterval(scanTimer);
+  let tries = 0, errs = 0;
+  scanTimer = setInterval(async () => {
+    // 逐信道扫描期间热点仍可能有零星丢包，这里容忍连续失败，不要一错就放弃
+    if (++tries > 35){
+      clearInterval(scanTimer);
+      box.innerHTML = `<div class="hint">扫描超时。可直接在上方手动输入 WiFi 名称，同样可以保存。</div>`;
+      return;
+    }
+    let d;
+    try{
+      d = await api("/api/wifi/scan");
+      errs = 0;
+    }catch(e){
+      if (e && e.message === "unauth"){ clearInterval(scanTimer); return; }
+      if (++errs > 15){
+        clearInterval(scanTimer);
+        box.innerHTML = `<div class="hint">与设备的连接中断了。请确认手机仍连着设备热点，稍后重试；
+          也可以直接在上方手动输入 WiFi 名称。</div>`;
+        return;
+      }
+      box.innerHTML = `<div class="hint">扫描中，连接短暂中断（第 ${errs} 次），正在重试…</div>`;
+      return;
+    }
+
+    if (d.scanning){
+      box.innerHTML = `<div class="hint">正在扫描各信道… ${d.progress || 0}%</div>
+        <div class="bar"><i class="ok" style="width:${d.progress || 0}%"></i></div>`;
+      return;
+    }
+
+    clearInterval(scanTimer);
+    if (!d.list || !d.list.length){
+      box.innerHTML = `<div class="hint">未发现任何网络，可手动输入 WiFi 名称。</div>`;
+      return;
+    }
+    box.innerHTML = `<div class="list">` + d.list.map(a =>
+      `<div class="it" onclick="pickAp('${esc(a.ssid).replace(/'/g,"\'")}')">
+         <b>${a.enc ? "🔒" : "🔓"} ${esc(a.ssid)}</b>
+         <small>${a.quality}% · ${a.rssi}dBm · CH${a.channel} · ${esc(a.encName)}</small>
+       </div>`).join("") + `</div>`;
+  }, 1000);
+}
+function pickAp(ssid){ $("wSsid").value = ssid; $("wPass").focus(); toast("已选择 " + ssid); }
+async function testWifi(){
+  const ssid = getV("wSsid");
+  if (!ssid) return toast("请先填写 SSID", "warn");
+  const pass = getV("wPass") || "********";
+  try{ const d = await api("/api/wifi/test", {method:"POST", body:{ssid, password:pass}});
+       toast(d.msg, "warn"); go("log"); }catch(e){}
+}
+
+/* ======================= 巴法云主题 ======================= */
+function topicRow(t){
+  t = t || {enable:true, topic:"", name:"", bind:1};
+  return `<div class="trow" style="border:1px solid var(--line);border-radius:11px;padding:11px;margin-bottom:10px">
+    <div class="row">
+      <div class="field" style="margin-bottom:8px"><label>主题名</label>
+        <input type="text" class="tTopic" value="${esc(t.topic)}" placeholder="switch001"></div>
+      <div class="field" style="margin-bottom:8px"><label>显示名称</label>
+        <input type="text" class="tName" value="${esc(t.name)}" placeholder="主开关"></div>
+    </div>
+    <div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+      <label class="inline" style="margin:0"><input type="checkbox" class="tEn" ${t.enable?"checked":""}><label>启用</label></label>
+      <label class="inline" style="margin:0"><input type="checkbox" class="tBind" ${t.bind?"checked":""}><label>绑定继电器</label></label>
+      <span class="spacer" style="flex:1"></span>
+      <button class="btn sm danger" onclick="this.closest('.trow').remove()">删除</button>
+    </div></div>`;
+}
+function renderTopics(list){
+  $("topicBox").innerHTML = (list && list.length ? list : [null]).map(topicRow).join("");
+}
+function addTopic(){
+  if (document.querySelectorAll("#topicBox .trow").length >= 4)
+    return toast("最多 4 个主题", "warn");
+  $("topicBox").insertAdjacentHTML("beforeend", topicRow(null));
+}
+async function testPublish(){
+  const row = document.querySelector("#topicBox .tTopic");
+  const topic = row ? row.value.trim() : "";
+  if (!topic) return toast("请先填写主题名", "warn");
+  const suf = ["/up", "/set", ""][getN("mSuf")] || "";
+  try{
+    const d = await api("/api/mqtt/publish",
+      {method:"POST", body:{topic: topic + suf, payload:"on"}});
+    toast(d.ok ? `已向 ${topic + suf} 发送 on，请看控制台是否变化` : d.msg,
+          d.ok ? "ok" : "err");
+  }catch(e){}
+}
+
+/* ======================= 引脚 ======================= */
+const PINS = [0,2,4,5,12,13,14,15,16,17,18,19,21,22,23,25,26,27,32,33];
+function buildPinSelects(){
+  const opts = PINS.map(p => `<option value="${p}">IO${p}${p===16?"（本板默认）":""}</option>`).join("");
+  $("rPin").innerHTML = opts;
+  $("probePin").innerHTML = opts;
+}
+async function probe(){
+  const pin = getN("probePin");
+  try{
+    const d = await api("/api/relay/probe",
+      {method:"POST", body:{pin, pulseMs:800, activeHigh:getV("rLvl")==="1"}});
+    toast(d.msg, d.ok ? "ok" : "err");
+  }catch(e){}
+}
+
+/* ======================= 定时任务 ======================= */
+const WEEK = ["日","一","二","三","四","五","六"];
+function buildSchedRows(){
+  let h = "";
+  for (let i = 0; i < 8; i++){
+    h += `<div class="sched" data-i="${i}">
+      <label class="inline" style="margin:0"><input type="checkbox" class="sEn"><label>#${i+1}</label></label>
+      <div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">
+        <input type="number" class="sH" min="0" max="23" style="width:64px" placeholder="时">
+        <span>:</span>
+        <input type="number" class="sM" min="0" max="59" style="width:64px" placeholder="分">
+        <select class="sA" style="width:auto"><option value="1">开启</option>
+          <option value="0">关闭</option><option value="2">翻转</option></select>
+        <div class="days">${WEEK.map((w,d) =>
+          `<button type="button" data-d="${d}" onclick="this.classList.toggle('on')">${w}</button>`).join("")}</div>
+      </div>
+      <span></span></div>`;
+  }
+  $("schedBox").innerHTML = h;
+}
+function fillSched(list){
+  document.querySelectorAll("#schedBox .sched").forEach((row, i) => {
+    const s = (list && list[i]) || {enable:false, days:127, hour:0, minute:0, action:1};
+    row.querySelector(".sEn").checked = s.enable;
+    row.querySelector(".sH").value = s.hour;
+    row.querySelector(".sM").value = s.minute;
+    row.querySelector(".sA").value = s.action;
+    row.querySelectorAll(".days button").forEach((b, d) =>
+      b.classList.toggle("on", !!(s.days & (1 << d))));
+  });
+}
+function saveSched(){
+  const list = [];
+  document.querySelectorAll("#schedBox .sched").forEach(row => {
+    let days = 0;
+    row.querySelectorAll(".days button").forEach((b, d) => { if (b.classList.contains("on")) days |= (1 << d); });
+    list.push({enable: row.querySelector(".sEn").checked, days,
+      hour: parseInt(row.querySelector(".sH").value, 10) || 0,
+      minute: parseInt(row.querySelector(".sM").value, 10) || 0,
+      action: parseInt(row.querySelector(".sA").value, 10)});
+  });
+  saveCfg({schedules:list}, "定时任务");
+}
+
+/* ======================= 日志 ======================= */
+async function pollLogs(){
+  let d; try{ d = await api("/api/logs?since=" + LOGLAST); }catch(e){ return; }
+  if (!d.ok || !d.items) return;
+  if (d.lastId < LOGLAST){ LOGS = []; LOGLAST = 0; }   // 设备重启后重新拉取
+  if (d.items.length){
+    LOGS = LOGS.concat(d.items).slice(-400);
+    LOGLAST = d.lastId;
+    renderLogs();
+  }
+}
+function renderLogs(){
+  const lv = parseInt($("logLv").value, 10);
+  const box = $("logBox");
+  const names = ["ERR","WRN","INF","DBG"];
+  box.innerHTML = LOGS.filter(l => l.lv <= lv).map(l => {
+    const t = l.ts ? new Date(l.ts * 1000).toLocaleTimeString("zh-CN", {hour12:false})
+                   : ("+" + l.up + "s");
+    return `<div class="lg${l.lv}"><time>${t}</time><em>[${names[l.lv]}][${esc(l.tag)}]</em>${esc(l.msg)}</div>`;
+  }).join("");
+  if ($("logAuto").checked) box.scrollTop = box.scrollHeight;
+}
+async function clearLogs(){
+  try{ await api("/api/logs/clear", {method:"POST"}); LOGS = []; LOGLAST = 0;
+       renderLogs(); toast("日志已清空", "ok"); }catch(e){}
+}
+function downloadLogs(){
+  const names = ["ERROR","WARN","INFO","DEBUG"];
+  const txt = LOGS.map(l => {
+    const t = l.ts ? new Date(l.ts * 1000).toLocaleString("zh-CN") : "+" + l.up + "s";
+    return `[${t}][${names[l.lv]}][${l.tag}] ${l.msg}`;
+  }).join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([txt], {type:"text/plain;charset=utf-8"}));
+  a.download = "esp32-switch-log.txt";
+  a.click();
+}
+
+/* ======================= OTA ======================= */
+async function loadOta(){
+  let d; try{ d = await api("/api/ota/status"); }catch(e){ return; }
+  if (!d.ok) return;
+  const o = d.ota;
+  $("otaInfo").innerHTML = kv("当前版本", o.version) + kv("编译时间", fmtBuild(o.buildTime)) +
+    kv("可用升级空间", fmtKB(o.freeSpace) + " KB") + kv("升级状态", o.phaseText) +
+    kv("最近消息", o.message);
+  setV("otaUrl", "");
+}
+function uploadFw(){
+  const f = $("fwFile").files[0];
+  if (!f) return toast("请先选择固件文件", "warn");
+  if (!f.name.endsWith(".bin")) return toast("固件文件应为 .bin 格式", "warn");
+
+  const fd = new FormData();
+  fd.append("firmware", f, f.name);
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", "/api/ota/upload");
+  xhr.setRequestHeader("X-Auth-Token", TOKEN);
+  $("otaBtn").disabled = true;
+
+  xhr.upload.onprogress = e => {
+    if (!e.lengthComputable) return;
+    const p = Math.round(e.loaded * 100 / e.total);
+    $("otaBar").style.width = p + "%";
+    $("otaMsg").textContent = `正在上传 ${p}%（${fmtKB(e.loaded)} / ${fmtKB(e.total)} KB）`;
+  };
+  xhr.onload = () => {
+    $("otaBtn").disabled = false;
+    let d = {};
+    try{ d = JSON.parse(xhr.responseText); }catch(e){}
+    if (xhr.status === 200 && d.ok){
+      $("otaMsg").textContent = d.msg + "，设备重启中，约 15 秒后请手动刷新页面。";
+      toast("升级成功，设备重启中", "ok");
+      setTimeout(() => location.reload(), 16000);
+    }else{
+      $("otaBar").style.width = "0";
+      $("otaMsg").textContent = "升级失败：" + (d.msg || "未知错误");
+      toast(d.msg || "升级失败", "err");
+    }
+  };
+  xhr.onerror = () => {
+    $("otaBtn").disabled = false;
+    $("otaMsg").textContent = "上传中断，请检查网络后重试";
+    toast("上传中断", "err");
+  };
+  $("otaMsg").textContent = "正在上传…";
+  xhr.send(fd);
+}
+async function otaByUrl(){
+  const url = getV("otaUrl");
+  if (!url) return toast("请填写固件地址", "warn");
+  if (!confirm("确认从该地址升级？升级期间请勿断电。")) return;
+  try{ const d = await api("/api/ota/url", {method:"POST", body:{url}});
+       toast(d.msg, d.ok ? "ok" : "err"); if (d.ok) go("log"); }catch(e){}
+}
+async function otaCheck(){
+  $("otaChkRes").textContent = "正在检查…";
+  try{
+    const d = await api("/api/ota/check", {method:"POST", body:{}});
+    if (!d.ok){ $("otaChkRes").textContent = "检查失败：" + d.msg; return; }
+    const r = d.remote || {};
+    $("otaChkRes").innerHTML = kv("当前版本", d.current) + kv("服务器版本", r.version || "-") +
+      kv("更新说明", r.notes || "-") + (r.url ? kv("固件地址", r.url) : "");
+    if (r.url) setV("otaUrl", r.url);
+  }catch(e){ $("otaChkRes").textContent = "检查失败"; }
+}
+
+/* ======================= 备份与危险操作 ======================= */
+function exportCfg(){
+  const a = document.createElement("a");
+  a.href = "/api/config/export";
+  a.download = "esp32-switch-backup.json";
+  a.click();
+  toast("已开始下载配置备份", "ok");
+}
+function importCfg(input){
+  const f = input.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = async () => {
+    if (!confirm("导入后将覆盖全部当前配置并重启设备，确认继续？")){ input.value = ""; return; }
+    try{
+      const r = await fetch("/api/config/import", {method:"POST",
+        headers:{"X-Auth-Token":TOKEN, "Content-Type":"application/json"}, body: rd.result});
+      const d = await r.json();
+      toast(d.msg, d.ok ? "ok" : "err");
+      if (d.ok) setTimeout(() => location.reload(), 8000);
+    }catch(e){ toast("导入失败", "err"); }
+    input.value = "";
+  };
+  rd.readAsText(f);
+}
+async function reboot(){
+  if (!confirm("确认重启设备？")) return;
+  try{ const d = await api("/api/system/reboot", {method:"POST", body:{}});
+       toast(d.msg, "warn"); setTimeout(() => location.reload(), 9000); }catch(e){}
+}
+async function factory(){
+  const v = prompt("此操作会清空全部配置且不可恢复。\n请输入 RESET 确认：");
+  if (v !== "RESET") return;
+  try{ const d = await api("/api/system/factory", {method:"POST", body:{confirm:"RESET"}});
+       toast(d.msg, "warn"); }catch(e){}
+}
+
+/* ======================= 入口 ======================= */
+(async function init(){
+  buildNav();
+  if (!TOKEN){ showLogin(); return; }
+  try{
+    const d = await api("/api/status");
+    if (d && d.ok){ $("login").style.display = "none"; boot(); }
+  }catch(e){ showLogin(); }
+})();
+</script>
+</body>
+</html>

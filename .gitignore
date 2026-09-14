@@ -1,0 +1,63 @@
+# ============================================================================
+#  ESP32 智能开关 —— Git 忽略规则
+# ============================================================================
+
+# ---- 构建产物 ----------------------------------------------------------
+# PlatformIO 的编译输出与依赖库（本地约 60MB，可由 pio run 完整重建）
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# 由 tools/build_web.py 在编译前自动生成；网页源码是 web/index.html，
+# 这个头文件提交上去只会在每次改网页时产生巨大的无意义 diff
+include/web_assets.h
+
+# clangd / IDE 的编译数据库，含本机绝对路径
+compile_commands.json
+.clang_complete
+.gcc-flags.json
+
+# 编译出来的固件（OTA 时常被拷到项目根目录）
+*.bin
+*.elf
+*.map
+
+# ---- 编辑器 / IDE 本机配置 ----------------------------------------------
+# 这些由 PlatformIO 自动生成，内含本机绝对路径与用户名，换台机器就失效；
+# .vscode/extensions.json 是纯推荐插件列表，与机器无关，保留提交
+.vscode/.browse.c_cpp.db*
+.vscode/c_cpp_properties.json
+.vscode/launch.json
+.vscode/ipch/
+.idea/
+*.iml
+*.swp
+*~
+
+# 本机专属的 PlatformIO 覆盖配置（串口号、上传速率等因人而异）
+platformio_override.ini
+
+# ---- 含敏感信息，绝对不要提交 -------------------------------------------
+# 网页【系统】→ 导出配置 下载下来的备份文件。
+# 里面是【明文】的 WiFi 密码、网页登录密码、巴法云私钥，一旦提交等于全部泄露
+*backup*.json
+esp32sw-*.json
+esp32-switch-backup*.json
+
+# 网页【日志】→ 下载日志 导出的文件，含 SSID、IP、MAC 等网络信息
+esp32-switch-log*.txt
+*.log
+
+# 如果以后引入本地密钥文件，也一并挡住
+secrets.h
+credentials.h
+.env
+
+# ---- Android 配网 App ---------------------------------------------------
+# 固件已移除蓝牙功能，该 App 已失效，不纳入版本管理
+android/
+
+# ---- 操作系统垃圾文件 ---------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store
