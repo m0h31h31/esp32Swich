@@ -336,7 +336,7 @@ textarea{min-height:90px;font-family:ui-monospace,Consolas,monospace;font-size:1
       <div class="inline"><input type="checkbox" id="mSync"><label>连接成功后同步一次状态</label></div>
       <div class="field">
         <label>状态上报方式</label>
-        <select id="mSuf">
+        <select id="mReportSuffix">
           <option value="0">主题/up —— 只更新云端数据（官方推荐，默认）</option>
           <option value="1">主题/set —— 同时推送给其他订阅者</option>
           <option value="2">主题（无后缀）—— 兼容旧版接入</option>
@@ -885,7 +885,7 @@ function fillForm(){
   setV("mKey", ""); setV("mSuf", c.mqtt.clientSuffix);
   setV("mKa", c.mqtt.keepalive); setV("mRep", c.mqtt.reportIntervalS);
   setC("mChg", c.mqtt.reportOnChange); setC("mSync", c.mqtt.syncOnConnect);
-  setV("mSuf", c.mqtt.reportSuffix);
+  setV("mReportSuffix", c.mqtt.reportSuffix);
   renderTopics(c.mqtt.topics);
   // 硬件
   setV("rPin", c.relay.pin); setV("rLvl", c.relay.activeHigh ? 1 : 0);
@@ -950,7 +950,7 @@ function saveMqtt(){
   const p = {mqtt:{enable:getC("mEn"), host:getV("mHost"), port:getN("mPort"),
     clientSuffix:getV("mSuf"), keepalive:getN("mKa"), reportIntervalS:getN("mRep"),
     reportOnChange:getC("mChg"), syncOnConnect:getC("mSync"),
-    reportSuffix:getN("mSuf"), topics}};
+    reportSuffix:getN("mReportSuffix"), topics}};
   if (getV("mKey")) p.mqtt.key = getV("mKey");
   saveCfg(p, "巴法云");
 }
@@ -1064,7 +1064,7 @@ async function testPublish(){
   const row = document.querySelector("#topicBox .tTopic");
   const topic = row ? row.value.trim() : "";
   if (!topic) return toast("请先填写主题名", "warn");
-  const suf = ["/up", "/set", ""][getN("mSuf")] || "";
+  const suf = ["/up", "/set", ""][getN("mReportSuffix")] || "";
   try{
     const d = await api("/api/mqtt/publish",
       {method:"POST", body:{topic: topic + suf, payload:"on"}});
